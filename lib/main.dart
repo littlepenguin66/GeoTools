@@ -24,10 +24,15 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
-        return MaterialApp(
-          title: 'CUGB-GeoTools',
-          theme: themeProvider.currentTheme,
-          home: const MyHomePage(title: 'Toolbox'),
+        return AnimatedTheme(
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+          data: themeProvider.currentTheme,
+          child: MaterialApp(
+            title: 'CUGB-GeoTools',
+            theme: themeProvider.currentTheme,
+            home: const MyHomePage(title: 'Toolbox'),
+          ),
         );
       },
     );
@@ -64,8 +69,8 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: _selectedIndex == 0
           ? AppBar(
               title: Text(widget.title,
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold, color: textColor)),
+                  style:
+                      TextStyle(fontWeight: FontWeight.bold, color: textColor)),
               backgroundColor: isDarkMode ? Colors.black : Colors.white,
               elevation: 0,
               centerTitle: true,
@@ -119,7 +124,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Tools for Geologists',
+                    'Tools for Geologists in Zhoukoudian',
                     style: TextStyle(
                       color: textColor,
                       fontSize: 16,

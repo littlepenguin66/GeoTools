@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeProvider with ChangeNotifier {
   ThemeData _currentTheme;
@@ -7,6 +6,15 @@ class ThemeProvider with ChangeNotifier {
 
   ThemeProvider({required bool isDarkMode})
       : _currentTheme = isDarkMode ? darkTheme : lightTheme;
+
+  void toggleTheme() {
+    if (_currentTheme == lightTheme) {
+      _currentTheme = darkTheme;
+    } else {
+      _currentTheme = lightTheme;
+    }
+    notifyListeners();
+  }
 
   static final ThemeData lightTheme = ThemeData(
     primarySwatch: Colors.grey,
@@ -47,13 +55,5 @@ class ThemeProvider with ChangeNotifier {
       bodyColor: Colors.white,
       displayColor: Colors.white,
     ),
-    iconTheme: const IconThemeData(color: Colors.white),
   );
-
-  Future<void> toggleTheme() async {
-    _currentTheme = _currentTheme == lightTheme ? darkTheme : lightTheme;
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isDarkMode', _currentTheme == darkTheme);
-    notifyListeners();
-  }
 }

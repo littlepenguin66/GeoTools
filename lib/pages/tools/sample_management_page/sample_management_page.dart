@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'add_sample_page.dart'; // 新的页面
+import 'package:provider/provider.dart';
+import 'add_sample_page.dart';
+import '../../../theme_provider.dart';
 
 class SampleManagementPage extends StatefulWidget {
   const SampleManagementPage({super.key});
@@ -9,7 +11,6 @@ class SampleManagementPage extends StatefulWidget {
 }
 
 class _SampleManagementPageState extends State<SampleManagementPage> {
-  // 模拟的历史线路数据
   final List<Map<String, dynamic>> _historyRoutes = [];
 
   void _addNewRoute() {
@@ -17,40 +18,68 @@ class _SampleManagementPageState extends State<SampleManagementPage> {
       context: context,
       builder: (context) {
         TextEditingController routeNameController = TextEditingController();
-        return AlertDialog(
-          title: const Text('添加新路线'),
-          content: TextField(
-            controller: routeNameController,
-            decoration: const InputDecoration(
-              labelText: '路线名称',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () {
-                if (routeNameController.text.isNotEmpty) {
-                  setState(() {
-                    _historyRoutes.add({
-                      'routeName': routeNameController.text,
-                      'samples': <Map<String, dynamic>>[]
-                    });
-                  });
-                  Navigator.of(context).pop();
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('请输入路线名称')),
-                  );
-                }
-              },
-              child: const Text('确定'),
-            ),
-          ],
+        return Consumer<ThemeProvider>(
+          builder: (context, themeProvider, child) {
+            final isDarkMode =
+                themeProvider.currentTheme.brightness == Brightness.dark;
+            return AlertDialog(
+              backgroundColor: isDarkMode ? Colors.black : Colors.white,
+              title: Text(
+                '添加新路线',
+                style:
+                    TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              ),
+              content: TextField(
+                controller: routeNameController,
+                decoration: InputDecoration(
+                  labelText: '路线名称',
+                  labelStyle: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black),
+                ),
+                style:
+                    TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('取消',
+                      style: TextStyle(
+                          color: isDarkMode ? Colors.white : Colors.black)),
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (routeNameController.text.isNotEmpty) {
+                      setState(() {
+                        _historyRoutes.add({
+                          'routeName': routeNameController.text,
+                          'samples': <Map<String, dynamic>>[]
+                        });
+                      });
+                      Navigator.of(context).pop();
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '请输入路线名称',
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          backgroundColor:
+                              isDarkMode ? Colors.black : Colors.white,
+                        ),
+                      );
+                    }
+                  },
+                  child: Text('确定',
+                      style: TextStyle(
+                          color: isDarkMode ? Colors.white : Colors.black)),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -64,7 +93,7 @@ class _SampleManagementPageState extends State<SampleManagementPage> {
           samples: route['samples'] as List<Map<String, dynamic>>,
           onSampleAdded: (sampleInfo) {
             setState(() {
-              route['samples'].add(sampleInfo); // 添加到对应路线的样品列表
+              route['samples'].add(sampleInfo);
             });
           },
         ),
@@ -74,37 +103,50 @@ class _SampleManagementPageState extends State<SampleManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.currentTheme.brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('样品管理数据库'),
         centerTitle: true,
+        backgroundColor: isDarkMode ? Colors.black : Colors.white,
+        foregroundColor: isDarkMode ? Colors.white : Colors.black,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('历史线路:',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(
+              '历史线路:',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black),
+            ),
             const SizedBox(height: 10),
             Expanded(
               child: ListView.builder(
                 itemCount: _historyRoutes.length,
                 itemBuilder: (context, index) {
                   return Card(
-                    elevation: 4, // 阴影效果
+                    elevation: 4,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10), // 圆角
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     margin: const EdgeInsets.symmetric(vertical: 5),
+                    color: isDarkMode ? Colors.black : Colors.white,
                     child: ListTile(
-                      leading: const Icon(Icons.route,
-                          color: Color.fromARGB(255, 255, 255, 255)), // 线路图标
+                      leading: Icon(Icons.route,
+                          color: isDarkMode ? Colors.white : Colors.black),
                       title: Text(
                         _historyRoutes[index]['routeName'],
-                        style: const TextStyle(fontSize: 16),
+                        style: TextStyle(
+                            fontSize: 16,
+                            color: isDarkMode ? Colors.white : Colors.black),
                       ),
-                      contentPadding: const EdgeInsets.all(16), // 内边距
+                      contentPadding: const EdgeInsets.all(16),
                       onTap: () {
                         _navigateToAddSample(_historyRoutes[index]);
                       },
@@ -118,7 +160,8 @@ class _SampleManagementPageState extends State<SampleManagementPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addNewRoute,
-        child: const Icon(Icons.add),
+        backgroundColor: isDarkMode ? Colors.white : Colors.black,
+        child: Icon(Icons.add, color: isDarkMode ? Colors.black : Colors.white),
       ),
     );
   }

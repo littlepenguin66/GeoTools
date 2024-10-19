@@ -18,9 +18,10 @@ class SettingPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Settings',
             style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: isDarkMode ? Colors.black : Colors.white,
-        elevation: 0,
         centerTitle: true,
+        backgroundColor: isDarkMode ? Colors.black : Colors.white,
+        foregroundColor: isDarkMode ? Colors.white : Colors.black,
+        elevation: 0,
       ),
       drawer: _buildDrawer(context),
       body: Container(
@@ -103,7 +104,8 @@ class SettingPage extends StatelessWidget {
                           color: aboutTextColor,
                         ),
                       ),
-                      trailing: Icon(Icons.arrow_forward_ios, color: aboutTextColor),
+                      trailing:
+                          Icon(Icons.arrow_forward_ios, color: aboutTextColor),
                       onTap: () {
                         _showAboutDialog(context);
                       },
@@ -146,7 +148,7 @@ class SettingPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Tools for Geologists',
+                    'Tools for Geologists in Zhoukoudian',
                     style: TextStyle(
                       color: textColor,
                       fontSize: 16,
@@ -163,7 +165,7 @@ class SettingPage extends StatelessWidget {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => MyHomePage(title: 'Toolbox')),
+                      builder: (context) => const MyHomePage(title: 'Toolbox')),
                 );
               },
             ),
@@ -190,7 +192,8 @@ class SettingPage extends StatelessWidget {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('About'),
-          content: const Text('This is a simple app for geologists.'),
+          content:
+              const Text('This is a simple app for geologists in Zhoukoudian.'),
           actions: <Widget>[
             TextButton(
               child: const Text('Close'),

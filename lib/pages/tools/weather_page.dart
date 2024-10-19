@@ -2,39 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:io' show Platform;
 import 'package:html/parser.dart' show parse;
 
 class WeatherPage extends StatelessWidget {
   const WeatherPage({super.key});
 
   Future<Position> _getCurrentLocation() async {
-    LocationPermission permission;
-
-    // 检查权限
-    permission = await Geolocator.checkPermission();
+    var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
-      // 请求权限
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
         throw Exception('定位权限被拒绝');
       }
     }
-
-    // 获取当前位置
     return await Geolocator.getCurrentPosition(
         locationSettings:
             const LocationSettings(accuracy: LocationAccuracy.high));
-  }
-
-  Future<Map<String, dynamic>> _getLocationFromIP() async {
-    final response = await http.get(Uri.parse('http://ip-api.com/json/'));
-
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception('无法获取位置信息');
-    }
   }
 
   Future<Map<String, dynamic>> _fetchWeather(
@@ -65,6 +48,7 @@ class WeatherPage extends StatelessWidget {
       final inclinationRegExp = RegExp(r'Inclination: ([^°]+° [^ ]+)');
       final magneticFieldRegExp =
           RegExp(r'Magnetic field strength:\s+([^\s]+)');
+      final locationRegExp = RegExp(r'([A-Z\s]+)\nMagnetic Declination');
 
       final magneticDeclinationMatch =
           magneticDeclinationRegExp.firstMatch(documentBody ?? '');
@@ -72,17 +56,14 @@ class WeatherPage extends StatelessWidget {
       final inclinationMatch = inclinationRegExp.firstMatch(documentBody ?? '');
       final magneticFieldMatch =
           magneticFieldRegExp.firstMatch(documentBody ?? '');
-
-      final magneticDeclinationStr = magneticDeclinationMatch?.group(1) ?? '';
-      final declinationStr = declinationMatch?.group(1) ?? '';
-      final inclinationStr = inclinationMatch?.group(1) ?? '';
-      final fieldStrengthValue = magneticFieldMatch?.group(1) ?? '';
+      final locationMatch = locationRegExp.firstMatch(documentBody ?? '');
 
       return {
-        'magneticdeclination': magneticDeclinationStr,
-        'declination': declinationStr,
-        'inclination': inclinationStr,
-        'magneticField': fieldStrengthValue
+        'magneticdeclination': magneticDeclinationMatch?.group(1) ?? '',
+        'declination': declinationMatch?.group(1) ?? '',
+        'inclination': inclinationMatch?.group(1) ?? '',
+        'magneticField': magneticFieldMatch?.group(1) ?? '',
+        'city': locationMatch?.group(1) ?? '未知地点',
       };
     } else {
       throw Exception('Failed to load magnetic declination data');
@@ -106,14 +87,13 @@ class WeatherPage extends StatelessWidget {
         return '小雨';
       case 56:
       case 57:
+      case 66:
+      case 67:
         return '冻雨';
       case 61:
       case 63:
       case 65:
         return '雨';
-      case 66:
-      case 67:
-        return '冻雨';
       case 71:
       case 73:
       case 75:
@@ -154,12 +134,14 @@ class WeatherPage extends StatelessWidget {
       case 61:
       case 63:
       case 65:
+      case 80:
+      case 81:
+      case 82:
         return Icons.grain;
       case 56:
       case 57:
       case 66:
       case 67:
-        return Icons.ac_unit;
       case 71:
       case 73:
       case 75:
@@ -167,10 +149,6 @@ class WeatherPage extends StatelessWidget {
       case 85:
       case 86:
         return Icons.ac_unit;
-      case 80:
-      case 81:
-      case 82:
-        return Icons.grain;
       case 95:
       case 96:
       case 99:
@@ -180,34 +158,53 @@ class WeatherPage extends StatelessWidget {
     }
   }
 
+  Widget _buildLoading(String message, ThemeData theme) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(theme.primaryColor),
+        ),
+        const SizedBox(height: 16),
+        Text(message, style: theme.textTheme.bodyMedium),
+      ],
+    );
+  }
+
+  Widget _buildError(String message, ThemeData theme) {
+    return Center(
+      child: Text('错误: $message', style: theme.textTheme.bodyMedium),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context); // 获取当前主题
+    final appBarColor = theme.brightness == Brightness.dark
+        ? Colors.black
+        : Colors.white; // 设置顶部栏颜色
+    final appBarTextColor = theme.brightness == Brightness.dark
+        ? Colors.white
+        : Colors.black; // 设置顶部栏字体和图标颜色
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('天气查询'),
+        title: Text('天气查询', style: TextStyle(color: appBarTextColor)),
+        centerTitle: true,
+        backgroundColor: appBarColor,
+        iconTheme: IconThemeData(color: appBarTextColor), // 设置图标颜色
       ),
       body: Center(
         child: FutureBuilder<Map<String, dynamic>>(
-          future: Platform.isWindows
-              ? _getLocationFromIP()
-              : _getCurrentLocation().then((position) => {
-                    'lat': double.parse(position.latitude.toStringAsFixed(4)),
-                    'lon': double.parse(position.longitude.toStringAsFixed(4)),
-                    'city': '未知地点',
-                    'regionName': ''
-                  }),
+          future: _getCurrentLocation().then((position) => {
+                'lat': double.parse(position.latitude.toStringAsFixed(4)),
+                'lon': double.parse(position.longitude.toStringAsFixed(4))
+              }),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('正在获取定位信息...'),
-                ],
-              );
+              return _buildLoading('正在获取定位信息...', theme);
             } else if (snapshot.hasError) {
-              return Text('错误: ${snapshot.error}');
+              return _buildError(snapshot.error.toString(), theme);
             } else {
               var locationData = snapshot.data!;
               double latitude = locationData['lat'];
@@ -217,16 +214,9 @@ class WeatherPage extends StatelessWidget {
                 builder: (context, weatherSnapshot) {
                   if (weatherSnapshot.connectionState ==
                       ConnectionState.waiting) {
-                    return const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('正在获取天气信息...'),
-                      ],
-                    );
+                    return _buildLoading('正在获取天气信息...', theme);
                   } else if (weatherSnapshot.hasError) {
-                    return Text('天气错误: ${weatherSnapshot.error}');
+                    return _buildError(weatherSnapshot.error.toString(), theme);
                   } else {
                     var weatherData = weatherSnapshot.data!;
                     return FutureBuilder<Map<String, String>>(
@@ -234,14 +224,7 @@ class WeatherPage extends StatelessWidget {
                       builder: (context, magneticSnapshot) {
                         if (magneticSnapshot.connectionState ==
                             ConnectionState.waiting) {
-                          return const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text('正在获取磁偏角信息...'),
-                            ],
-                          );
+                          return _buildLoading('正在获取磁偏角信息...', theme);
                         } else if (magneticSnapshot.hasError) {
                           return SingleChildScrollView(
                             child: Column(
@@ -249,26 +232,25 @@ class WeatherPage extends StatelessWidget {
                               children: [
                                 Card(
                                   elevation: 5,
+                                  color: theme.cardColor,
                                   child: Padding(
                                     padding: const EdgeInsets.all(16.0),
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(
-                                          '当前位置: ${locationData['city']}, ${locationData['regionName']}',
-                                          style: const TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold),
+                                          '当前位置: ${magneticSnapshot.data?['city']}, ${magneticSnapshot.data?['regionName']}',
+                                          style: theme.textTheme.bodyLarge,
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
                                           '经纬度: ${latitude.toStringAsFixed(4)}° N, ${longitude.toStringAsFixed(4)}° E',
-                                          style: const TextStyle(fontSize: 16),
+                                          style: theme.textTheme.bodyMedium,
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
                                           '无法获取磁偏角信息: ${magneticSnapshot.error}',
-                                          style: const TextStyle(fontSize: 16),
+                                          style: theme.textTheme.bodyMedium,
                                         ),
                                       ],
                                     ),
@@ -277,16 +259,15 @@ class WeatherPage extends StatelessWidget {
                                 const SizedBox(height: 16),
                                 Card(
                                   elevation: 5,
+                                  color: theme.cardColor,
                                   child: Padding(
                                     padding: const EdgeInsets.all(16.0),
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Text(
+                                        Text(
                                           '今天与后三天天气预报',
-                                          style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold),
+                                          style: theme.textTheme.bodyLarge,
                                         ),
                                         const SizedBox(height: 16),
                                         for (int i = 0; i < 4; i++)
@@ -297,37 +278,41 @@ class WeatherPage extends StatelessWidget {
                                               children: [
                                                 Text(
                                                   '日期: ${weatherData['daily']['time'][i]}',
-                                                  style: const TextStyle(
-                                                      fontSize: 16),
+                                                  style: theme
+                                                      .textTheme.bodyMedium,
                                                 ),
                                                 Row(
                                                   children: [
-                                                    Icon(getWeatherIcon(
-                                                        weatherData['daily']
-                                                                ['weathercode']
-                                                            [i])),
+                                                    Icon(
+                                                        getWeatherIcon(
+                                                            weatherData['daily']
+                                                                    [
+                                                                    'weathercode']
+                                                                [i]),
+                                                        color: theme
+                                                            .iconTheme.color),
                                                     const SizedBox(width: 8),
                                                     Text(
                                                       '天气: ${getWeatherDescription(weatherData['daily']['weathercode'][i])}',
-                                                      style: const TextStyle(
-                                                          fontSize: 16),
+                                                      style: theme
+                                                          .textTheme.bodyMedium,
                                                     ),
                                                   ],
                                                 ),
                                                 Text(
                                                   '降雨概率: ${weatherData['daily']['precipitation_probability_mean'][i]}%',
-                                                  style: const TextStyle(
-                                                      fontSize: 16),
+                                                  style: theme
+                                                      .textTheme.bodyMedium,
                                                 ),
                                                 Text(
                                                   '最高温度: ${weatherData['daily']['temperature_2m_max'][i]}°C',
-                                                  style: const TextStyle(
-                                                      fontSize: 16),
+                                                  style: theme
+                                                      .textTheme.bodyMedium,
                                                 ),
                                                 Text(
                                                   '最低温度: ${weatherData['daily']['temperature_2m_min'][i]}°C',
-                                                  style: const TextStyle(
-                                                      fontSize: 16),
+                                                  style: theme
+                                                      .textTheme.bodyMedium,
                                                 ),
                                                 const Divider(),
                                               ],
@@ -350,46 +335,40 @@ class WeatherPage extends StatelessWidget {
                                 children: [
                                   Card(
                                     elevation: 5,
+                                    color: theme.cardColor,
                                     child: Padding(
                                       padding: const EdgeInsets.all(16.0),
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Text(
-                                            '当前位置: ${locationData['city']}, ${locationData['regionName']}',
-                                            style: const TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold),
+                                            '当前位置: ${magneticData['city']}',
+                                            style: theme.textTheme.bodyLarge,
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
                                             '经纬度: ${latitude.toStringAsFixed(4)}° N, ${longitude.toStringAsFixed(4)}° E',
-                                            style:
-                                                const TextStyle(fontSize: 16),
+                                            style: theme.textTheme.bodyMedium,
                                           ),
                                           const SizedBox(height: 16),
                                           Text(
                                             '磁偏角: ${magneticData['magneticdeclination']}',
-                                            style:
-                                                const TextStyle(fontSize: 16),
+                                            style: theme.textTheme.bodyMedium,
                                           ),
                                           const SizedBox(height: 16),
                                           Text(
                                             '偏角方向: ${magneticData['declination']}',
-                                            style:
-                                                const TextStyle(fontSize: 16),
+                                            style: theme.textTheme.bodyMedium,
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
                                             '倾角: ${magneticData['inclination']}',
-                                            style:
-                                                const TextStyle(fontSize: 16),
+                                            style: theme.textTheme.bodyMedium,
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
                                             '磁场强度: ${magneticData['magneticField']}nT',
-                                            style:
-                                                const TextStyle(fontSize: 16),
+                                            style: theme.textTheme.bodyMedium,
                                           ),
                                         ],
                                       ),
@@ -398,16 +377,15 @@ class WeatherPage extends StatelessWidget {
                                   const SizedBox(height: 16),
                                   Card(
                                     elevation: 5,
+                                    color: theme.cardColor,
                                     child: Padding(
                                       padding: const EdgeInsets.all(16.0),
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          const Text(
+                                          Text(
                                             '未来四天天气预报',
-                                            style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold),
+                                            style: theme.textTheme.bodyLarge,
                                           ),
                                           const SizedBox(height: 16),
                                           for (int i = 0; i < 4; i++)
@@ -419,37 +397,40 @@ class WeatherPage extends StatelessWidget {
                                                 children: [
                                                   Text(
                                                     '日期: ${weatherData['daily']['time'][i]}',
-                                                    style: const TextStyle(
-                                                        fontSize: 16),
+                                                    style: theme
+                                                        .textTheme.bodyMedium,
                                                   ),
                                                   Row(
                                                     children: [
-                                                      Icon(getWeatherIcon(
-                                                          weatherData['daily'][
+                                                      Icon(
+                                                          getWeatherIcon(weatherData[
+                                                                      'daily'][
                                                                   'weathercode']
-                                                              [i])),
+                                                              [i]),
+                                                          color: theme
+                                                              .iconTheme.color),
                                                       const SizedBox(width: 8),
                                                       Text(
                                                         '天气: ${getWeatherDescription(weatherData['daily']['weathercode'][i])}',
-                                                        style: const TextStyle(
-                                                            fontSize: 16),
+                                                        style: theme.textTheme
+                                                            .bodyMedium,
                                                       ),
                                                     ],
                                                   ),
                                                   Text(
                                                     '降雨概率: ${weatherData['daily']['precipitation_probability_mean'][i]}%',
-                                                    style: const TextStyle(
-                                                        fontSize: 16),
+                                                    style: theme
+                                                        .textTheme.bodyMedium,
                                                   ),
                                                   Text(
                                                     '最高温度: ${weatherData['daily']['temperature_2m_max'][i]}°C',
-                                                    style: const TextStyle(
-                                                        fontSize: 16),
+                                                    style: theme
+                                                        .textTheme.bodyMedium,
                                                   ),
                                                   Text(
                                                     '最低温度: ${weatherData['daily']['temperature_2m_min'][i]}°C',
-                                                    style: const TextStyle(
-                                                        fontSize: 16),
+                                                    style: theme
+                                                        .textTheme.bodyMedium,
                                                   ),
                                                   const Divider(),
                                                 ],
