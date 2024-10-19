@@ -1,7 +1,7 @@
 <p align="center">
 <img alt="GeoTools" src="https://th.bing.com/th/id/OIP.55IGwIn2JO7O4RazfVvGwAHaDg?rs=1&pid=ImgDetMain">
 <br><br>
-<a title="Releases" target="_blank" href="https://github.com/littlepenguin66/GeoTool/releases"><img src="https://img.shields.io/github/release/littlepenguin66/GeoTool.svg?style=flat-square&color=9CF"></a>
+<a title="Releases" target="_blank" href="https://github.com/littlepenguin66/GeoTools/releases"><img src="https://img.shields.io/github/release/littlepenguin66/GeoTools.svg?style=flat-square&color=9CF"></a>
 <a title="MIT License" target="_blank" href="https://opensource.org/licenses/MIT"><img src="http://img.shields.io/badge/license-MIT-orange.svg?style=flat-square"></a>
 <br>
 </p>
